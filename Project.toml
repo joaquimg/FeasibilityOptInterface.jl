@@ -1,0 +1,4 @@
+name = "FeasibilityOptInterface"
+uuid = "427ef5fb-2141-4365-8ed4-44d519970edf"
+authors = ["Joaquim Garcia <joaquimgarcia@psr-inc.com>"]
+version = "0.1.0"
