@@ -2,3 +2,19 @@ name = "FeasibilityOptInterface"
 uuid = "427ef5fb-2141-4365-8ed4-44d519970edf"
 authors = ["Joaquim Garcia <joaquimgarcia@psr-inc.com>"]
 version = "0.1.0"
+
+[deps]
+Dualization = "191a621a-6537-11e9-281d-650236a99e60"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+MathOptSetDistances = "3b969827-a86c-476c-9527-bb6f1a8fbad5"
+
+[compat]
+MathOptInterface = "0.9"
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
