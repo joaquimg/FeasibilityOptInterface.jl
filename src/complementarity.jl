@@ -1,25 +1,33 @@
 
 function objective_report(checker::FeasibilityChecker)
-    _has_dual_model(checker)
 
     objval = objective(checker)
-    d_objval = dual_objective(checker)
 
-    gap = _objective_gap(checker, objval, d_objval)
+    sense = MOI.get(checker.primal, MOI.ObjectiveSense())::MOI.OptimizationSense
 
     str =
     """
     Objective report
 
-    * Problem sense: xxx
+    * Problem sense: $(sense)
 
     * Primal objective = $(objval)
 
-    * Dual objective = $(d_objval)
-
-    * Objective Gap = $(gap) [ |p-d|/(|p|+|d|+1e-10) ]
-
     """
+    
+    if checker.check_dual
+        _has_dual_model(checker)
+
+        d_objval = dual_objective(checker)
+        gap = _objective_gap(checker, objval, d_objval)
+
+        str *= """
+        * Dual objective = $(d_objval)
+
+        * Objective Gap = $(gap) [ |p-d|/(|p|+|d|+1e-10) ]
+
+        """
+    end
 
     return _remove_moi(str, checker)
 end
@@ -78,7 +86,7 @@ function complement_violation(checker::FeasibilityChecker)
             total += val
             if val >= largest
                 largest = val
-                largest_ref = con
+                largest_ref = con #_fix_ref(checker, con)
             end
         end
     end
@@ -124,7 +132,7 @@ function dual_complement_violation(checker::FeasibilityChecker)
         total += val
         if val >= largest
             largest = val
-            largest_ref = vi
+            largest_ref = vi #_fix_ref(checker, vi)
         end
     end
     return total, largest, largest_ref

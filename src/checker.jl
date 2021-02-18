@@ -7,7 +7,8 @@ constraint_dual_start(model) = x -> MOI.get(model, MOI.ConstraintDual(), x)
 struct EmptyDict{K,V} <: AbstractDict{K,V}
 end
 EmptyDict() = EmptyDict{Any,Any}()
-haskey(::EmptyDict, key) = false
+Base.haskey(::EmptyDict, key) = false
+Base.iterate(::EmptyDict) = nothing
 
 
 """
@@ -31,16 +32,18 @@ the keys of the dictionay then the MOD.DefaultDistance() is used.
 
 """
 mutable struct FeasibilityChecker
+    jump::Union{JuMP.AbstractModel, Nothing}
+
     primal::MOI.ModelLike
     check_dual::Bool
     dual::Union{Dualization.DualProblem, Nothing}
     dual_vi_primal_con::Union{Dict, Nothing}
+
     distance_map::AbstractDict
-    tol::Number
     varval::Function
     condual::Function
-    # options::FeasibilityCheckerOptions
 
+    tol::Number
     primal_tol::Number
     dual_tol::Number
     complement_tol::Number
@@ -56,8 +59,10 @@ mutable struct FeasibilityChecker
     # add tolerance per constraint type ?
     # complement bound is in sum. should it be individual?
 end
-function FeasibilityChecker(model::MOI.ModelLike;
-    check_dual::Bool = true,
+function FeasibilityChecker(model::Union{
+    MOI.ModelLike, JuMP.AbstractModel
+};
+    check_dual::Bool = false,
 
     distance_map::AbstractDict = EmptyDict(),
     varval::Function = variable_primal(model),
@@ -75,16 +80,34 @@ function FeasibilityChecker(model::MOI.ModelLike;
     print_index::Bool = true,
     print_distance::Bool = true,
 )
+    jump_model = _jump_model(model)
+    varmap = if jump_model ===nothing
+        varval
+    else
+        x->varval(JuMP.VariableRef(model, x))
+    end
+    conmap = if jump_model ===nothing
+        condual
+    else
+        x->condual(JuMP.constraint_ref_with_index(model, x))
+    end
+    sense = MOI.get(model, MOI.ObjectiveSense())::MOI.OptimizationSense
+    if sense == MOI.FEASIBILITY_SENSE && check_dual
+        @warn "Dual checks disabled, because model sense is FEASIBILITY_SENSE"
+        check_dual = false
+    end
     return FeasibilityChecker(
-        model,
+        jump_model,
+        moi_model(model),
         check_dual,
         nothing,
         nothing,
+
         distance_map,
-        tol,
-        varval,
+        varmap,
         condual,
-        # options,
+
+        tol,
         primal_tol,
         dual_tol,
         complement_tol,
@@ -93,9 +116,14 @@ function FeasibilityChecker(model::MOI.ModelLike;
         print_below_tol,
         print_names,
         print_index,
-        print_distance,    
+        print_distance,
     )
 end
+
+_jump_model(model::JuMP.AbstractModel) = model
+_jump_model(::MOI.ModelLike) = nothing
+moi_model(model::JuMP.AbstractModel) = JuMP.backend(model)
+moi_model(model::MOI.ModelLike) = model
 
 # lazy loading of dual model
 function _load_dual(checker::FeasibilityChecker)
@@ -121,12 +149,18 @@ function primal_dual_constraint_violation_report(checker::FeasibilityChecker)
 end
 
 function report(checker::FeasibilityChecker)
-    _has_dual_model(checker)
-    str = ""
-    str *= objective_report(checker)
-    str *= primal_dual_constraint_violation_report(checker)
-    str *= complement_violation_report(checker)
-    str *= dual_complement_violation_report(checker)
+    if checker.check_dual
+        _has_dual_model(checker)
+        str = ""
+        str *= objective_report(checker)
+        str *= primal_dual_constraint_violation_report(checker)
+        str *= complement_violation_report(checker)
+        str *= dual_complement_violation_report(checker)
+    else
+        str = ""
+        str *= objective_report(checker)
+        str *= constraint_violation_report(checker)
+    end
     return _remove_moi(str, checker)
 end
 

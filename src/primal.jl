@@ -79,14 +79,18 @@ end
 
 Internal method to build lines of the `constraint_violation_report`.
 """
-function _violation_string(model, ref::MOI.ConstraintIndex{F, S},
+function _violation_string(model, _ref::Union{CR{F,S}, CI{F, S}},
     val, checker
 ) where {F, S}
+    ref = _moi_ref(_ref)
     str = " ($F, $S) = $(val)"
     if haskey(checker.distance_map, (F, S)) && checker.print_distance
         str *= " [$(distance_map[F, S])]"
     end
     str *= "\n"
+    # TODO
+    # jump conversion
+    # what if it is dual ref ???
     if checker.print_index
         str *= "     Index: $(ref)\n"
     end
@@ -97,7 +101,7 @@ function _violation_string(model, ref::MOI.ConstraintIndex{F, S},
         catch
             nothing
         end
-        if name === nothing 
+        if name !== nothing
             str *= "     Name: $(name)\n"
         end
     end
@@ -237,6 +241,6 @@ function constraint_violation(model::MOI.ModelLike, con::MOI.ConstraintIndex;
     func = MOI.get(model, MOI.ConstraintFunction(), con)
     set  = MOI.get(model, MOI.ConstraintSet(), con)
     val  = MOIU.eval_variables(varval, func)
-    dist = distance_to_set(distance, val, set)
+    dist = MOD.distance_to_set(distance, val, set)
     return dist
 end

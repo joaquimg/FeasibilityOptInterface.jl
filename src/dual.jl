@@ -28,7 +28,7 @@ function dual_constraint_violation(checker::FeasibilityChecker, primal_con_or_va
     dual_varval = x -> _dual_variable_primal(checker, x)
 
     val  = MOIU.eval_variables(dual_varval, func)
-    dist = distance_to_set(distance, val, set)
+    dist = MOD.distance_to_set(distance, val, set)
 
     return dist
 end
